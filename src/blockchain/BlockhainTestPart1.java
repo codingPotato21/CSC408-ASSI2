@@ -1,7 +1,7 @@
 package blockchain;
 
 import java.util.ArrayList;
-import com.google.gson.GsonBuilder;
+import part2_1.Block;
 
 public class BlockhainTestPart1 {
 	

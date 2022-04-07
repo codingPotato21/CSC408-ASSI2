@@ -1,4 +1,4 @@
-package blockchain;
+package part2_1;
 
 import java.util.Date;
 
@@ -38,7 +38,7 @@ public class Block {
 			hash = calculateHash();
 		}
 		System.out.println("Block Mined!!! : " + hash);
-		System.out.println("Previous Hash: " + hash);
+		System.out.println("Previouse hash: " + previousHash);
 		System.out.println("Block Nonce: " + nonce);
 	}
 	
