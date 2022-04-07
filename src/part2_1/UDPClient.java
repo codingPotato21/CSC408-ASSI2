@@ -36,7 +36,7 @@ public class UDPClient {
 						serverPort);
 				aSocket.send(request);
 				
-				Thread.sleep(5);
+				Thread.sleep(50);
 
 			}
 
