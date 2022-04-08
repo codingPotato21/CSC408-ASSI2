@@ -33,10 +33,10 @@ public class Block {
 	}
 	
 	//Increases nonce value until hash target is reached.
-	public int mineBlock() {
+	public int mineBlock(int serverID) {
 		String target = StringUtil.getDificultyString(difficulty); //Create a string with difficulty * "0" 
 		if (!hash.substring( 0, difficulty).equals(target)) {
-			nonce++;
+			nonce = (nonce + serverID);
 			hash = calculateHash();
 			return -1;
 		}
