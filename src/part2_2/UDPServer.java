@@ -6,107 +6,78 @@ import java.io.*;
 
 public class UDPServer {
 
-	public static ArrayList<Block> minedBlockchain = new ArrayList<>();
-	public static ArrayList<Client> clients = new ArrayList<>();
+	private static Block receivedBLock = null;
+	private static Block blockToMine = null;
+	private static InetAddress clientAddress = null;
+	private static int clientPort = 0;
 
-	public static int difficulty = 3;
 	private static DatagramSocket aSocket;
 
 	public static void main(String args[]) {
+		// args[0] = ID of the server
+
 		try {
-			aSocket = new DatagramSocket(20000);
+			aSocket = new DatagramSocket(20000 + Integer.parseInt(args[0]));
 			System.out.println("Server is ready and accepting clients' requests ... ");
 
 			byte[] buffer = new byte[1000];
 			while (true) {
 
-				// Receive the block from the client in json format
-				DatagramPacket request = new DatagramPacket(buffer, buffer.length);
-				aSocket.receive(request);
+				if (receivedBLock == null) {
 
-				// Convert the json data into a block
-				String receivedJson = new String(request.getData(), request.getOffset(), request.getLength());
+					// Receive the block from the client in json format
+					DatagramPacket request = new DatagramPacket(buffer, buffer.length);
+					aSocket.receive(request);
 
-				boolean foundClient = false;
-				for (int i = 0; i < clients.size(); i++) {
+					clientAddress = request.getAddress();
+					clientPort = request.getPort();
 
-					if (clients.get(i).getAddress().toString().equals(request.getAddress().toString())
-							&& clients.get(i).getPort() == request.getPort()) {
+					// Convert the json data into a block
+					String receivedJson = new String(request.getData(), request.getOffset(), request.getLength());
+					receivedBLock = StringUtil.getBlock(receivedJson);
 
-						clients.get(i).blockchain.add(StringUtil.getBlock(receivedJson));
+					System.out.println("Server " + Integer.parseInt(args[0]) + " Received block" + ", from client: "
+							+ request.getAddress() + ":" + request.getPort());
 
-						System.out.println("Received block: " + clients.get(i).blockchain.size() + ", from client: "
-								+ clients.get(i).getAddress() + ":" + clients.get(i).getPort());
+					blockToMine = receivedBLock;
 
-						foundClient = true;
+				} else {
+
+					// Receive the block from the client in json format
+					DatagramPacket command = new DatagramPacket(buffer, buffer.length);
+					aSocket.setSoTimeout(5);
+
+					try {
+						aSocket.receive(command);
+					} catch (SocketTimeoutException te) {
+						
+						// Start mining the block
+						int miningStatus = blockToMine.mineBlock();
+						System.out.println(miningStatus);
+						if (miningStatus > 0) {
+
+							try {
+								final DatagramSocket clientSocket = aSocket;
+								clientSocket.send(new DatagramPacket(StringUtil.getJson(blockToMine).getBytes(),
+										StringUtil.getJson(blockToMine).length(), clientAddress, clientPort));
+							} catch (IOException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+
+						}
+
+						continue;
 
 					}
 
-				}
+					String commandString = new String(command.getData(), command.getOffset(), command.getLength());
 
-				if (!foundClient) {
+					if (commandString.equals("stop")) {
 
-					Client newClient = new Client(request.getAddress(), request.getPort());
-					newClient.blockchain.add(StringUtil.getBlock(receivedJson));
-					clients.add(newClient);
-
-					System.out.println("Received block: " + newClient.blockchain.size() + ", from client: "
-							+ newClient.getAddress() + ":" + newClient.getPort());
-
-				}
-
-				// Check if we received the full blockchain for all clients
-				boolean startMining = true;
-				for (int i = 0; i < clients.size(); i++) {
-					if (clients.get(i).blockchain.size() < 500)
-						startMining = false;
-				}
-
-				if (startMining) {
-
-					// Check if there are any active clients
-					if (!clients.isEmpty()) {
-
-						// Loop through all clients in the list
-						clients.forEach((client) -> {
-
-							minedBlockchain = new ArrayList<Block>();
-
-							// Mine the received blocks
-							for (int i = 0; i < client.blockchain.size(); i++) {
-								Block block = client.blockchain.get(i);
-								addBlock(block, minedBlockchain);
-							}
-
-							client.blockchain = new ArrayList<Block>();
-
-							// Send the mined blocks 1 by 1 back to the client
-							minedBlockchain.forEach((block) -> {
-
-								try {
-									final DatagramSocket clientSocket = aSocket;
-									clientSocket.send(new DatagramPacket(StringUtil.getJson(block).getBytes(),
-											StringUtil.getJson(block).length(), client.getAddress(), client.getPort()));
-									Thread.sleep(20);
-								} catch (IOException e) {
-									// TODO Auto-generated catch block
-									e.printStackTrace();
-								} catch (InterruptedException e) {
-									// TODO Auto-generated catch block
-									e.printStackTrace();
-								}
-
-							});
-
-						});
-
-						// Remove clients with resolved blockchains
-						ArrayList<Client> resolvedClietnsIndex = new ArrayList<>();
-						for (int i = 0; i < clients.size(); i++) {
-							if (clients.get(i).blockchain.isEmpty())
-								resolvedClietnsIndex.add(clients.get(i));
-						}
-						resolvedClietnsIndex.forEach((client) -> clients.remove(client));
+						System.out.println(
+								"Server " + Integer.parseInt(args[0]) + " Received a stop command! EXITING....");
+						break;
 
 					}
 
@@ -123,13 +94,6 @@ public class UDPServer {
 				aSocket.close();
 		}
 
-	}
-
-	public static void addBlock(Block newBlock, ArrayList<Block> chain) {
-		if (chain.size() != 0)
-			newBlock.previousHash = chain.get(chain.size() - 1).hash;
-		newBlock.mineBlock(difficulty);
-		chain.add(newBlock);
 	}
 
 }
