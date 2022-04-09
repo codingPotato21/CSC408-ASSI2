@@ -33,12 +33,18 @@ public class Block {
 	}
 	
 	//Increases nonce value until hash target is reached.
-	public int mineBlock(int serverID) {
+	public int mineBlock(int nonceStart, int nonceEnd) {
 		String target = StringUtil.getDificultyString(difficulty); //Create a string with difficulty * "0" 
 		if (!hash.substring( 0, difficulty).equals(target)) {
-			nonce = (nonce + serverID);
-			hash = calculateHash();
-			return -1;
+			if (nonce <= nonceEnd) {
+				nonce++;
+				hash = calculateHash();
+				return -1;
+			} else {
+				System.out.println("Block Not Mined!!!");
+				System.out.println("Nonce limit has been reached");
+				return -1;
+			}
 		}
 		System.out.println("Block Mined!!! : " + hash);
 		System.out.println("Previouse hash: " + previousHash);
