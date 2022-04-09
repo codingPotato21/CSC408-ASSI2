@@ -22,7 +22,7 @@ public class UDPServer {
 		this.serverID = serverID;
 		this.nonceStart = nonceStart;
 		this.nonceEnd = nonceEnd;
-		
+
 		// Start the server
 		init();
 
@@ -33,6 +33,7 @@ public class UDPServer {
 		try {
 			aSocket = new DatagramSocket(20000 + serverID);
 			System.out.println("Server " + serverID + " is ready and accepting MasterServer requests ... ");
+			System.out.println("Server nonce limit: " + nonceStart + " To: " + nonceEnd);
 
 			byte[] buffer = new byte[1000];
 			while (true) {
@@ -65,6 +66,7 @@ public class UDPServer {
 					DatagramPacket command = new DatagramPacket(buffer, buffer.length);
 					aSocket.setSoTimeout(50);
 
+					boolean stopped = true;
 					try {
 						aSocket.receive(command);
 					} catch (SocketTimeoutException te) {
@@ -82,14 +84,25 @@ public class UDPServer {
 							}
 
 						} else {
-							continue;
+							if (miningStatus == -2) {
+								stopped = false;
+							} else {
+								continue;
+							}
 						}
 
 					}
 
-					String commandString = new String(command.getData(), command.getOffset(), command.getLength());
+					if (!stopped) {
 
-					System.out.println("Server " + serverID + " Received stop command from the client! Pausing....");
+						String commandString = new String(command.getData(), command.getOffset(), command.getLength());
+
+						System.out
+								.println("Server " + serverID + " Received stop command from the client! Pausing....");
+
+					} else {
+						System.out.println("Server " + serverID + " Failed to mine the block!");
+					}
 
 					receivedBLock = null;
 					blockToMine = null;

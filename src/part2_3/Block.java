@@ -43,7 +43,7 @@ public class Block {
 			} else {
 				System.out.println("Block Not Mined!!!");
 				System.out.println("Nonce limit has been reached");
-				return -1;
+				return -2;
 			}
 		}
 		System.out.println("Block Mined!!! : " + hash);

@@ -13,27 +13,38 @@ public class MasterServer {
 	private static ArrayList<Server> servers = new ArrayList<>();
 	private static Block receivedBLock = null;
 	private static Block blockToMine = null;
+	private static String minedBlockJson = "";
 	private static InetAddress clientAddress = null;
 	private static int clientPort = -1;
 
 	private static DatagramSocket aSocket;
 
 	public static void main(String args[]) {
-
-		// Create a list of slave servers
-		for (int i = 1; i <= Integer.parseInt(args[1]); i++) {
-
-			DatagramSocket aSocket = new DatagramSocket();
-			InetAddress aHost = InetAddress.getByName(args[0]);
-			int serverPort = 20000 + i;
-
-			servers.add(new Server(i, aHost, serverPort, aSocket));
-
-		}
+		// args[0] = Number of slave servers
+		// args[1] = Nonce starting range for each server ex. 100
 
 		try {
 			aSocket = new DatagramSocket(20000);
 			System.out.println("Master Server " + " is ready and accepting clients' requests ... ");
+
+			// Create a list of slave servers
+			for (int i = 1; i <= Integer.parseInt(args[0]); i++) {
+
+				final int serverID = i;
+				if (i == 1) {
+					new Thread(() -> new UDPServer(serverID, 0, (Integer.parseInt(args[1])))).start();
+				} else {
+					new Thread(() -> new UDPServer(serverID,
+							((Integer.parseInt(args[1]) * serverID) - Integer.parseInt(args[1])) + 1,
+							(Integer.parseInt(args[1]) * serverID))).start();
+				}
+				DatagramSocket aSocket = new DatagramSocket();
+				InetAddress aHost = InetAddress.getByName("127.0.0.1");
+				int serverPort = 20000 + i;
+
+				servers.add(new Server(i, aHost, serverPort, aSocket));
+
+			}
 
 			byte[] buffer = new byte[1000];
 			while (true) {
@@ -51,7 +62,6 @@ public class MasterServer {
 					String receivedJson = new String(request.getData(), request.getOffset(), request.getLength());
 					if (receivedJson.equals("stop"))
 						continue;
-					System.out.println(receivedJson);
 					receivedBLock = StringUtil.getBlock(receivedJson);
 
 					System.out.println("Master Server " + " Received block" + ", from client: " + request.getAddress()
@@ -75,8 +85,6 @@ public class MasterServer {
 					});
 
 					// Receive the block in json format from any of the servers
-					DatagramPacket reply = new DatagramPacket(buffer, buffer.length);
-
 					boolean receivedMinedBlock = false;
 					int winnerServerID = -1;
 					while (!receivedMinedBlock) {
@@ -93,7 +101,8 @@ public class MasterServer {
 								continue;
 							}
 
-							reply = serverReply;
+							minedBlockJson = new String(serverReply.getData(), serverReply.getOffset(),
+									serverReply.getLength());
 							receivedMinedBlock = true;
 							winnerServerID = servers.get(i).getServerID();
 
@@ -101,9 +110,15 @@ public class MasterServer {
 
 					}
 
+					// Print the hash of the mined block
+					System.out.println("Received Mined block from server " + winnerServerID);
+					System.out.println("Sending stop command to all slave servers...");
+					System.out.println("Sending mined block to the client...");
+					System.out.println("#############################################");
+
 					// Send stop command to servers
 					servers.forEach((server) -> {
-						
+
 						String stopString = "stop";
 						DatagramPacket stop = new DatagramPacket(stopString.getBytes(), stopString.length(),
 								server.getAddress(), server.getPort());
@@ -115,13 +130,15 @@ public class MasterServer {
 						}
 
 					});
-					
+
 					// Send the solved block to the client
-					
-					
+					DatagramPacket solvedBlock = new DatagramPacket(minedBlockJson.getBytes(), minedBlockJson.length(),
+							clientAddress, clientPort);
+					aSocket.send(solvedBlock);
+
 					receivedBLock = null;
 					blockToMine = null;
-					
+
 				}
 
 			}
