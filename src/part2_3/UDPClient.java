@@ -10,7 +10,7 @@ public class UDPClient {
 	private static ArrayList<Block> blockchain = new ArrayList<>();
 	private static ArrayList<Block> minedBlockchain = new ArrayList<>();
 
-	public static int difficulty = 1;
+	public static int difficulty = 3;
 
 	public static void main(String args[]) {
 		// args[0] = IP address of the server

@@ -32,9 +32,9 @@ public class MasterServer {
 
 				final int serverID = i;
 				if (i == 1) {
-					new Thread(() -> new UDPServer(serverID, 0, (Integer.parseInt(args[1])))).start();
+					new Thread(new UDPServer(serverID, 0, (Integer.parseInt(args[1])))).start();;
 				} else {
-					new Thread(() -> new UDPServer(serverID,
+					new Thread(new UDPServer(serverID,
 							((Integer.parseInt(args[1]) * serverID) - Integer.parseInt(args[1])) + 1,
 							(Integer.parseInt(args[1]) * serverID))).start();
 				}
@@ -110,12 +110,6 @@ public class MasterServer {
 
 					}
 
-					// Print the hash of the mined block
-					System.out.println("Received Mined block from server " + winnerServerID);
-					System.out.println("Sending stop command to all slave servers...");
-					System.out.println("Sending mined block to the client...");
-					System.out.println("#############################################");
-
 					// Send stop command to servers
 					servers.forEach((server) -> {
 
@@ -131,6 +125,19 @@ public class MasterServer {
 
 					});
 
+					// Print the hash of the mined block
+					System.out.println("Master Server Received Mined block from server " + winnerServerID);
+					System.out.println("Master Server Sending stop command to all slave servers...");
+					System.out.println("Master Server Sending mined block to the client...");
+
+					// Some pause is needed so the slave server don't skip the block after receiving a stop command while waiting for a block
+					try {
+						Thread.sleep(50);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					
 					// Send the solved block to the client
 					DatagramPacket solvedBlock = new DatagramPacket(minedBlockJson.getBytes(), minedBlockJson.length(),
 							clientAddress, clientPort);
